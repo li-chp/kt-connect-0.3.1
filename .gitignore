@@ -1,0 +1,16 @@
+output
+output/**
+
+.idea/
+.vscode/
+artifacts/
+dist/
+
+node_modules/
+note/
+
+.jvmrc
+.DS_Store
+vendor/
+c.out
+c.out.tmp

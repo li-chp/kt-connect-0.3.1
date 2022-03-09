@@ -1,0 +1,101 @@
+# Make sure to check the documentation at http://goreleaser.com
+env:
+  - GO_VERSION=1.17.5
+before:
+  hooks:
+    - make mod
+    - bash build/scripts/wintun.sh
+builds:
+  - id: "ktctl"
+    main: ./cmd/ktctl/main.go
+    binary: ktctl
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - 386
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+  - id: "shadow"
+    main: ./cmd/shadow/main.go
+    binary: shadow
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: "router"
+    main: ./cmd/router/main.go
+    binary: router
+    goos:
+      - linux
+    goarch:
+      - amd64
+dockers:
+  - goos: linux
+    goarch: amd64
+    ids:
+      - shadow
+    image_templates:
+      - "registry.cn-hangzhou.aliyuncs.com/rdc-incubator/kt-connect-shadow:latest"
+      - "registry.cn-hangzhou.aliyuncs.com/rdc-incubator/kt-connect-shadow:{{ .Tag }}"
+      - "registry.cn-hangzhou.aliyuncs.com/rdc-incubator/kt-connect-shadow:v{{ .Major }}"
+    dockerfile: build/docker/shadow/Dockerfile_releaser
+    skip_push: false
+    extra_files:
+      - build/docker/shadow/run.sh
+      - build/docker/shadow/setup_iptables.sh
+  - goos: linux
+    goarch: amd64
+    ids:
+      - router
+    image_templates:
+      - "registry.cn-hangzhou.aliyuncs.com/rdc-incubator/kt-connect-router:latest"
+      - "registry.cn-hangzhou.aliyuncs.com/rdc-incubator/kt-connect-router:{{ .Tag }}"
+      - "registry.cn-hangzhou.aliyuncs.com/rdc-incubator/kt-connect-router:v{{ .Major }}"
+    dockerfile: build/docker/router/Dockerfile_releaser
+    skip_push: false
+    extra_files:
+      - build/docker/router/nginx.conf
+archives:
+  - id: ktctl
+    builds:
+      - ktctl
+    name_template: 'ktctl_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - src: 'artifacts/{{ .Os }}/{{ .Arch }}/*'
+        dst: .
+        strip_parent: true
+    replacements:
+      darwin: MacOS
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+      arm64: arm_64
+checksum:
+  name_template: '{{ .Tag }}_checksums.txt'
+snapshot:
+  name_template: "SNAPSHOT"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^config:'
+      - '^refactor:'
+release:
+  github:
+    owner: alibaba
+    name: kt-connect
+  ids:
+    - ktctl
+  # @see https://github.com/goreleaser/goreleaser/issues/1023
+  draft: false
+  prerelease: auto
